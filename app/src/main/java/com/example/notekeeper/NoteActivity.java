@@ -3,8 +3,10 @@ package com.example.notekeeper;
 import android.content.Intent;
 import android.os.Bundle;
 
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 
+import androidx.lifecycle.ViewModelProvider;
 import androidx.navigation.NavController;
 import androidx.navigation.Navigation;
 import androidx.navigation.ui.AppBarConfiguration;
@@ -12,9 +14,11 @@ import androidx.navigation.ui.NavigationUI;
 
 import com.example.notekeeper.databinding.ActivityNoteBinding;
 
+import android.os.PersistableBundle;
 import android.provider.ContactsContract;
 import android.view.Menu;
 import android.view.MenuItem;
+import android.view.View;
 import android.widget.ArrayAdapter;
 import android.widget.EditText;
 import android.widget.Spinner;
@@ -38,7 +42,12 @@ public class NoteActivity extends AppCompatActivity {
     private String mOriginalNoteCourseId;
     private String mOriginalNoteTitle;
     private String mOriginalNoteText;
+    private NoteActivityViewModel mViewModel;
 
+    /*
+    When activitiy is initially created savedInstanceState is null.
+    When activity is destroyed and recreated saveInstanceState contains the saved state
+     */
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -47,6 +56,17 @@ public class NoteActivity extends AppCompatActivity {
         setContentView(binding.getRoot());
 
         setSupportActionBar(binding.toolbar);
+
+        ViewModelProvider viewModelProvider = new ViewModelProvider(getViewModelStore(), ViewModelProvider.AndroidViewModelFactory.getInstance(getApplication()));
+        mViewModel = viewModelProvider.get(NoteActivityViewModel.class);
+
+        //No need to restore ViewModel state in response to a configuration change.
+        //We only need to restore ViewModel state when it gets destroyed along with the activity
+        if(savedInstanceState != null && savedInstanceState != null){
+            mViewModel.restoreState(savedInstanceState);
+        }
+
+        mViewModel.mIsNewlyCreated = false;
 
         NavController navController = Navigation.findNavController(this, R.id.nav_host_fragment_content_main);
         appBarConfiguration = new AppBarConfiguration.Builder(navController.getGraph()).build();
@@ -72,9 +92,9 @@ public class NoteActivity extends AppCompatActivity {
     private void saveOriginalNoteValues() {
         if(mIsNewNote)
             return;
-        mOriginalNoteCourseId = mNote.getCourse().getCourseId();
-        mOriginalNoteTitle = mNote.getTitle();
-        mOriginalNoteText = mNote.getText();
+        mViewModel.mOriginalNoteCourseId = mNote.getCourse().getCourseId();
+        mViewModel.mOriginalNoteTitle = mNote.getTitle();
+        mViewModel.mOriginalNoteText = mNote.getText();
     }
 
     private void displayNote(Spinner spinnerCourses, EditText textNoteTitle, EditText textNoteText){
@@ -127,6 +147,13 @@ public class NoteActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    @Override
+    public void onSaveInstanceState(@NonNull Bundle outState, @NonNull PersistableBundle outPersistentState) {
+        super.onSaveInstanceState(outState, outPersistentState);
+        if(outState != null)
+            mViewModel.saveState(outState);
     }
 
     @Override
